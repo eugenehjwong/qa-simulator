@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qualitative Analysis Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .container {
+            min-height: 100vh;
+        }
+        .test-tube-container {
+            position: relative;
+            width: 150px;
+            height: 300px;
+            background-color: #e0e7ff;
+            border: 4px solid #1e3a8a;
+            border-radius: 0 0 75px 75px;
+            margin: 0 auto;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column-reverse;
+            z-index: 5;
+        }
+        .test-tube-liquid {
+            width: 100%;
+            transition: height 1s ease-in-out, background-color 1s ease-in-out;
+        }
+        .precipitate {
+            width: 90%;
+            height: 0;
+            margin: 0 auto;
+            border-radius: 50%;
+            transition: all 1s ease-in-out;
+            position: absolute;
+            bottom: 0;
+            left: 5%;
+            opacity: 0;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        .reaction-bubble {
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            position: absolute;
+            animation: bubble-up 2s linear infinite;
+        }
+        @keyframes bubble-up {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-300px); opacity: 0; }
+        }
+        .gas-test-area {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .litmus-paper, .splint {
+            position: absolute;
+            transition: transform 0.5s ease-in-out, background-color 0.5s ease-in-out;
+        }
+        .litmus-paper {
+            width: 40px;
+            height: 60px;
+            border-radius: 4px;
+        }
+        #redLitmusPaper {
+            background-color: #ef4444; /* red */
+            left: calc(50% - 25px); /* Position it to the left of center */
+            transform: translateX(-50%) rotate(-5deg);
+        }
+        #blueLitmusPaper {
+            background-color: #3b82f6; /* blue */
+            left: calc(50% + 25px); /* Position it to the right of center */
+            transform: translateX(-50%) rotate(5deg);
+        }
+        .splint {
+            width: 10px;
+            height: 80px;
+            background-color: #94a3b8; /* gray */
+            border-radius: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            position: relative;
+            opacity: 1; /* Made default to avoid visibility issues */
+        }
+        .splint.lit::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%) rotate(-5deg);
+            width: 10px;
+            height: 18px;
+            background: linear-gradient(to top, #ff9900, #ffcc00);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            box-shadow: 0 0 8px 3px rgba(255, 153, 0, 0.7);
+            animation: flame-flicker 0.5s infinite alternate;
+        }
+        @keyframes flame-flicker {
+            from { transform: translateX(-50%) rotate(-5deg) scale(1, 1); }
+            to { transform: translateX(-50%) rotate(5deg) scale(1.1, 0.9); }
+        }
+        .splint.pop-effect::after {
+            animation: pop 0.3s forwards;
+        }
+        @keyframes pop {
+            0% { transform: translateX(-50%) scale(1); opacity: 1; }
+            100% { transform: translateX(-50%) scale(2); opacity: 0; }
+        }
+        .splint.glowing::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444; /* Changed to red for glowing ember */
+            border-radius: 50%;
+            box-shadow: 0 0 5px 3px rgba(239, 68, 68, 0.7), 0 0 10px 5px rgba(255, 100, 100, 0.5); /* Adjusted glow color */
+            animation: glow-pulse 1s infinite alternate;
+        }
+        @keyframes glow-pulse {
+            from { transform: translateX(-50%) scale(1); opacity: 1; }
+            to { transform: translateX(-50%) scale(1.2); opacity: 0.9; }
+        }
+        .splint.extinguish-effect::after {
+            animation: extinguish 0.5s ease-in-out forwards;
+        }
+        @keyframes extinguish {
+            0% { transform: translateX(-50%) scale(1); opacity: 1; }
+            100% { transform: translateX(-50%) scale(0.1); opacity: 0; }
+        }
+        .message-box-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .message-box {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+            text-align: center;
+        }
+        
+        /* New styles for the two test tube gas visual */
+        .two-test-tube-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            position: relative;
+            width: 100%;
+            height: 300px;
+        }
+        .gas-gen-tube, .gas-collection-tube {
+            width: 100px;
+            height: 250px;
+            background-color: #f8fafc;
+            border: 4px solid #94a3b8;
+            border-radius: 0 0 50px 50px;
+            display: flex;
+            flex-direction: column-reverse;
+            position: relative;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+        .gas-gen-tube {
+            left: -50px;
+            z-index: 10;
+        }
+        .gas-collection-tube {
+            right: -50px;
+            z-index: 15;
+        }
+        .liquid-level {
+            width: 100%;
+            height: 60%;
+            background-color: #e0e7ff;
+            transition: height 0.5s ease-in-out, background-color 1s ease-in-out;
+        }
+        .stopper {
+            position: absolute;
+            top: -20px; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 108px; 
+            height: 40px; 
+            background-color: #64748b;
+            border-radius: 12px;
+            z-index: 20;
+        }
+        /* Asymmetrical delivery tube setup */
+        .delivery-tube-container {
+            position: absolute;
+            top: -5px; 
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 250px; 
+            z-index: 18;
+        }
+        .tube-left-arm, .tube-right-arm, .tube-curve {
+            position: absolute;
+            background-color: #64748b;
+            z-index: 19;
+        }
+        .tube-left-arm {
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 70px;
+            border-radius: 5px 0 0 0;
+        }
+        .tube-curve {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+        .tube-right-arm {
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 250px;
+            background-color: #64748b;
+            border-radius: 0 5px 0 0;
+        }
+        .bubble-stream {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 5px;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            animation: bubble-stream-up 2s linear infinite;
+        }
+        @keyframes bubble-stream-up {
+            from { transform: scaleY(0); opacity: 0; }
+            50% { transform: scaleY(1); opacity: 1; }
+            to { transform: scaleY(0); opacity: 0; }
+        }
+        .bubbler-end {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 10px;
+            background-color: white;
+            border-radius: 50%;
+        }
+        .limewater {
+            background-color: #e0f2fe; /* A very light, visible blue */
+            transition: height 1s ease-in-out, background-color 1s ease-in-out, filter 1s ease-in-out;
+            border-top: 1px solid #99cfff;
+            position: relative;
+            z-index: 16;
+        }
+        /* New class for the blurring effect */
+        .limewater.cloudy-effect {
+            filter: blur(4px);
+        }
+        .limewater-precipitate {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0;
+            background-color: rgba(255, 255, 255, 0.7); /* Changed to a semi-transparent white */
+            opacity: 0;
+            transition: height 1s ease-in-out, opacity 1s ease-in-out;
+            z-index: 17;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8 flex items-center justify-center container mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6 sm:p-10 w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Control Panel Section -->
+        <div class="flex flex-col space-y-6">
+            <h1 class="text-3xl font-bold text-gray-800 text-center md:text-left">Qualitative Analysis Simulator</h1>
+            <p class="text-sm text-gray-600 text-center md:text-left">Select a substance to test, then choose your reagent or gas test. Observe the results in the test tube.</p>
+            <p class="text-sm text-gray-600 text-center md:text-left">For the best experience, rotate your device to landscape mode to view the control panel and observations side-by-side.</p>
+            <p class="text-sm font-semibold text-red-600 text-center md:text-left">Please click the 'Reset' button before choosing a new ion.</p>
+            <!-- Test Selection -->
+            <div>
+                <label for="testType" class="block text-sm font-medium text-gray-700">Select Test Type:</label>
+                <select id="testType" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm transition duration-150 ease-in-out">
+                    <option value="cations">Cation Identification</option>
+                    <option value="anions">Anion Identification</option>
+                    <option value="gases">Gas Identification</option>
+                </select>
+            </div>
+
+            <!-- Substance Selection -->
+            <div>
+                <label for="substance" class="block text-sm font-medium text-gray-700">Select Substance:</label>
+                <select id="substance" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm transition duration-150 ease-in-out">
+                    <!-- Options will be populated by JS -->
+                </select>
+            </div>
+            
+            <!-- Reagent/Test Selection -->
+            <div id="reagent-section" class="flex flex-col space-y-4">
+                <label for="reagent" class="block text-sm font-medium text-gray-700">Add Reagent:</label>
+                <select id="reagent" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm transition duration-150 ease-in-out">
+                    <!-- Options will be populated by JS -->
+                </select>
+                <button id="addReagentBtn" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                    Add Reagent
+                </button>
+            </div>
+
+            <!-- Gas Test Section -->
+            <div id="gas-test-section" class="flex flex-col space-y-4 hidden">
+                <label for="gasTest" class="block text-sm font-medium text-gray-700">Choose Gas Test:</label>
+                <select id="gasTest" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm transition duration-150 ease-in-out">
+                    <!-- Options will be populated by JS -->
+                </select>
+                <button id="testGasBtn" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out">
+                    Perform Test
+                </button>
+            </div>
+            
+            <button id="resetBtn" class="w-full inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition duration-15-ease-in-out">
+                Reset
+            </button>
+        </div>
+
+        <!-- Simulation Display Section -->
+        <div class="flex flex-col items-center justify-center relative">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Observation</h2>
+            
+            <div id="simulation-display" class="w-full max-w-sm flex justify-center items-end relative">
+                 <!-- Litmus/Splint setup -->
+                <div id="litmus-splint-setup" class="absolute flex flex-row justify-center items-center z-10 hidden" style="bottom: 290px;">
+                    <div id="redLitmusPaper" class="litmus-paper opacity-0 absolute"></div>
+                    <div id="blueLitmusPaper" class="litmus-paper opacity-0 absolute"></div>
+                    <div id="splint" class="splint absolute"></div>
+                </div>
+
+                <!-- The main test tube for all reactions -->
+                <div id="testTube" class="test-tube-container shadow-xl">
+                    <div id="testTubeLiquid" class="test-tube-liquid h-full"></div>
+                    <div id="precipitate" class="precipitate"></div>
+                </div>
+
+                <!-- New Dynamic Gas Test Visual -->
+                <div id="dynamic-gas-visual" class="two-test-tube-container hidden">
+                    <!-- Left Test Tube (Gas Generation) -->
+                    <div class="gas-gen-tube">
+                        <div class="liquid-level"></div>
+                        <div class="stopper"></div>
+                    </div>
+                    <!-- Asymmetrical Delivery Tube -->
+                    <div class="delivery-tube-container">
+                        <div class="tube-left-arm"></div>
+                        <div class="tube-curve"></div>
+                        <!-- New element for the entire right arm -->
+                        <div id="tubeRightArm" class="tube-right-arm"></div>
+                    </div>
+                    <!-- Right Test Tube (Gas Collection) -->
+                    <div class="gas-collection-tube">
+                        <div id="limewaterLiquid" class="liquid-level limewater" style="height: 50%;">
+                            <div id="limewaterPrecipitate" class="limewater-precipitate"></div>
+                        </div>
+                        <div id="bubbling-container" style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 10px; height: 100px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Observations Text -->
+            <div id="observations" class="mt-8 p-4 bg-gray-100 rounded-md shadow-inner w-full max-w-md">
+                <p class="text-sm text-gray-700 font-medium">Results:</p>
+                <p id="observation-text" class="mt-1 text-gray-900 font-bold">Initial state: Colourless solution.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="messageBoxContainer" class="message-box-container hidden">
+        <div class="message-box">
+            <h3 id="messageBoxTitle" class="text-xl font-bold mb-2"></h3>
+            <p id="messageBoxContent" class="mb-4"></p>
+            <button id="messageBoxBtn" class="px-4 py-2 bg-blue-500 text-white rounded-md">OK</button>
+        </div>
+    </div>
+
+    <script>
+        const substanceSelect = document.getElementById('substance');
+        const testTypeSelect = document.getElementById('testType');
+        const reagentSelect = document.getElementById('reagent');
+        const gasTestSelect = document.getElementById('gasTest');
+        const addReagentBtn = document.getElementById('addReagentBtn');
+        const testGasBtn = document.getElementById('testGasBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const reagentSection = document.getElementById('reagent-section');
+        const gasTestSection = document.getElementById('gas-test-section');
+        const testTubeLiquid = document.getElementById('testTubeLiquid');
+        const precipitateElement = document.getElementById('precipitate');
+        const observationText = document.getElementById('observation-text');
+        const messageBoxContainer = document.getElementById('messageBoxContainer');
+        const messageBoxTitle = document.getElementById('messageBoxTitle');
+        const messageBoxContent = document.getElementById('messageBoxContent');
+        const messageBoxBtn = document.getElementById('messageBoxBtn');
+        const redLitmusPaper = document.getElementById('redLitmusPaper');
+        const blueLitmusPaper = document.getElementById('blueLitmusPaper');
+        const splint = document.getElementById('splint');
+        const litmusSplintSetup = document.getElementById('litmus-splint-setup');
+        const testTubeElement = document.getElementById('testTube');
+        
+        // New elements for dynamic gas visual
+        const dynamicGasVisual = document.getElementById('dynamic-gas-visual');
+        const gasGenTube = dynamicGasVisual.querySelector('.gas-gen-tube');
+        const gasCollectionTube = dynamicGasVisual.querySelector('.gas-collection-tube');
+        const limewaterLiquid = document.getElementById('limewaterLiquid');
+        const bubblingContainer = document.getElementById('bubbling-container');
+        const limewaterPrecipitate = document.getElementById('limewaterPrecipitate');
+
+        const cationData = {
+            'Al³⁺': {
+                'NaOH(aq)': { pptColor: 'white', soluble: true, excessColor: 'colorless' },
+                'NH₃(aq)': { pptColor: 'white', soluble: false }
+            },
+            'NH₄⁺': {
+                'NaOH(aq)': { gas: 'NH₃', gasTest: 'damp red litmus paper', gasResult: 'turns blue' },
+                'NH₃(aq)': { pptColor: 'none', soluble: false }
+            },
+            'Ca²⁺': {
+                'NaOH(aq)': { pptColor: 'white', soluble: false },
+                'NH₃(aq)': { pptColor: 'none', soluble: false }
+            },
+            'Cu²⁺': {
+                'NaOH(aq)': { pptColor: 'blue', soluble: false },
+                'NH₃(aq)': { pptColor: 'blue', soluble: true, excessColor: 'darkblue' }
+            },
+            'Fe²⁺': {
+                'NaOH(aq)': { pptColor: 'green', soluble: false },
+                'NH₃(aq)': { pptColor: 'green', soluble: false }
+            },
+            'Fe³⁺': {
+                'NaOH(aq)': { pptColor: 'red-brown', soluble: false },
+                'NH₃(aq)': { pptColor: 'red-brown', soluble: false }
+            },
+            'Zn²⁺': {
+                'NaOH(aq)': { pptColor: 'white', soluble: true, excessColor: 'colorless' },
+                'NH₃(aq)': { pptColor: 'white', soluble: true, excessColor: 'colorless' }
+            }
+        };
+
+        const anionData = {
+            'CO₃²⁻': {
+                'dilute acid': { gas: 'CO₂', gasTest: 'limewater', gasResult: 'gives white ppt. (dissolves with excess)' }
+            },
+            'Cl⁻': {
+                'dilute nitric acid + AgNO₃(aq)': { pptColor: 'white', soluble: false }
+            },
+            'I⁻': {
+                'dilute nitric acid + AgNO₃(aq)': { pptColor: 'yellow', soluble: false }
+            },
+            'NO₃⁻': {
+                'NaOH(aq) + Al foil': { gas: 'NH₃', gasTest: 'damp red litmus paper', gasResult: 'turns blue' }
+            },
+            'SO₄²⁻': {
+                'dilute nitric acid + Ba(NO₃)₂(aq)': { pptColor: 'white', soluble: false }
+            }
+        };
+
+        const gasData = {
+            'NH₃': { test: 'damp red litmus paper', result: 'turns blue' },
+            'CO₂': { test: 'limewater', result: 'gives white ppt. (dissolves with excess)' },
+            'Cl₂': { test: 'damp litmus paper', result: 'bleaches' },
+            'H₂': { test: 'lighted splint', result: 'extinguishes with a ‘pop’ sound' },
+            'O₂': { test: 'glowing splint', result: 'relights' },
+        };
+
+        const state = {
+            currentTest: null,
+            currentSubstance: null,
+            hasGas: false,
+            currentGas: null,
+            excessReagentAdded: false,
+            precipitateColorHex: null
+        };
+
+        function showMessage(title, message) {
+            messageBoxTitle.textContent = title;
+            messageBoxContent.textContent = message;
+            messageBoxContainer.classList.remove('hidden');
+        }
+
+        messageBoxBtn.addEventListener('click', () => {
+            messageBoxContainer.classList.add('hidden');
+        });
+        
+        function updateSubstances() {
+            substanceSelect.innerHTML = '';
+            const testType = testTypeSelect.value;
+            let substances;
+            if (testType === 'gases') {
+                substances = Object.keys(gasData);
+                reagentSection.classList.add('hidden');
+                gasTestSection.classList.remove('hidden');
+            } else if (testType === 'cations') {
+                substances = Object.keys(cationData);
+                reagentSection.classList.remove('hidden');
+                gasTestSection.classList.add('hidden');
+            } else if (testType === 'anions') {
+                substances = Object.keys(anionData);
+                reagentSection.classList.remove('hidden');
+                gasTestSection.classList.add('hidden');
+            }
+            substances.forEach(substance => {
+                const option = document.createElement('option');
+                option.value = substance;
+                option.textContent = substance;
+                substanceSelect.appendChild(option);
+            });
+            if (testType !== 'gases') {
+                updateInitialSolutionColor();
+                updateReagents();
+            } else {
+                 updateReagents();
+            }
+        }
+
+        function updateReagents() {
+            reagentSelect.innerHTML = '';
+            const substance = substanceSelect.value;
+            const testType = testTypeSelect.value;
+
+            if (substance && testType === 'cations') {
+                const reagents = Object.keys(cationData[substance]);
+                reagents.forEach(reagent => {
+                    const option = document.createElement('option');
+                    option.value = reagent;
+                    option.textContent = reagent;
+                    reagentSelect.appendChild(option);
+                });
+            } else if (substance && testType === 'anions') {
+                const reagents = Object.keys(anionData[substance]);
+                reagents.forEach(reagent => {
+                    const option = document.createElement('option');
+                    option.value = reagent;
+                    option.textContent = reagent;
+                    reagentSelect.appendChild(option);
+                });
+            }
+            
+            gasTestSelect.innerHTML = '';
+            Object.keys(gasData).forEach(gas => {
+                const testOptions = gasData[gas].test;
+                if (Array.isArray(testOptions)) {
+                    testOptions.forEach(test => {
+                        const option = document.createElement('option');
+                        option.value = test;
+                        option.textContent = test;
+                        gasTestSelect.appendChild(option);
+                    });
+                } else {
+                    const option = document.createElement('option');
+                    option.value = testOptions;
+                    option.textContent = testOptions;
+                    gasTestSelect.appendChild(option);
+                }
+            });
+        }
+        
+        function hexToRgb(hex) {
+            let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function getColorCode(color) {
+            switch (color) {
+                case 'white': return '#ffffff';
+                case 'blue': return '#3b82f6';
+                case 'light blue': return '#93c5fd';
+                case 'green': return '#10b981';
+                case 'red-brown': return '#b91c1c';
+                case 'yellow': return '#fcd34d';
+                case 'darkblue': return '#1e3a8a';
+                case 'pale green': return '#a7f3d0';
+                case 'reddish-brown': return '#9f583e';
+                case 'colorless': return 'rgba(255, 255, 255, 0.5)';
+                case 'red': return '#ef4444';
+                case 'limewater': return '#e0f2fe';
+                case 'cloudy': return '#f8fafc';
+                default: return 'transparent';
+            }
+        }
+        
+        function updateInitialSolutionColor() {
+            const substance = substanceSelect.value;
+            let color = 'colorless';
+            let colorText = 'Colourless';
+            switch (substance) {
+                case 'Cu²⁺': color = 'light blue'; colorText = 'Light blue'; break;
+                case 'Fe²⁺': color = 'pale green'; colorText = 'Pale green'; break;
+                case 'Fe³⁺': color = 'reddish-brown'; colorText = 'Reddish-brown'; break;
+                default: color = 'colorless'; colorText = 'Colourless'; break;
+            }
+            testTubeLiquid.style.backgroundColor = getColorCode(color);
+            observationText.textContent = `Initial state: ${colorText} solution.`
+        }
+        
+        function animatePrecipitate(color) {
+            precipitateElement.style.backgroundColor = getColorCode(color);
+            precipitateElement.style.opacity = '1';
+            precipitateElement.style.height = '20px';
+        }
+
+        function animateDissolve() {
+            precipitateElement.style.height = '0';
+            precipitateElement.style.opacity = '0';
+        }
+
+        function animateExcess(startColorHex, endColorHex) {
+            const startColor = hexToRgb(startColorHex);
+            const endColor = hexToRgb(endColorHex);
+             
+            if (!startColor || !endColor) return;
+
+            const duration = 1000;
+            const startTime = Date.now();
+
+            function step() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                const r = Math.round(startColor.r + (endColor.r - startColor.r) * progress);
+                const g = Math.round(startColor.g + (endColor.g - startColor.g) * progress);
+                const b = Math.round(startColor.b + (endColor.b - startColor.b) * progress);
+                
+                testTubeLiquid.style.backgroundColor = `rgb(${r},${g},${b})`;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                }
+            }
+            
+            requestAnimationFrame(step);
+        }
+        
+        function animateGas(gasName, testType, result) {
+            if (testType === 'limewater') {
+                testTubeElement.classList.add('hidden');
+                litmusSplintSetup.classList.add('hidden');
+                dynamicGasVisual.classList.remove('hidden');
+                
+                // Animate gas bubbles in the generation tube (left)
+                for (let i = 0; i < 15; i++) {
+                    const bubble = document.createElement('div');
+                    bubble.classList.add('reaction-bubble');
+                    bubble.style.width = `${Math.random() * 8 + 4}px`;
+                    bubble.style.height = bubble.style.width;
+                    bubble.style.left = `${Math.random() * 80 + 10}%`;
+                    bubble.style.bottom = `${Math.random() * 10}px`;
+                    gasGenTube.appendChild(bubble);
+                }
+                
+                setTimeout(() => {
+                    const bubbles = gasGenTube.querySelectorAll('.reaction-bubble');
+                    bubbles.forEach(bubble => bubble.remove());
+                    
+                    // Animate bubbles in the collection tube (right)
+                    let bubbleInterval = setInterval(() => {
+                        const bubble = document.createElement('div');
+                        bubble.classList.add('reaction-bubble');
+                        bubble.style.width = `${Math.random() * 8 + 4}px`;
+                        bubble.style.height = bubble.style.width;
+                        bubble.style.left = '50%';
+                        bubble.style.bottom = '10px';
+                        bubblingContainer.appendChild(bubble);
+
+                        if (bubblingContainer.children.length > 5) {
+                            bubblingContainer.removeChild(bubblingContainer.children[0]);
+                        }
+                    }, 500);
+
+                    if (gasName === 'CO₂') {
+                        // Add the new blur effect class
+                        limewaterLiquid.classList.add('cloudy-effect');
+                        limewaterPrecipitate.style.height = '10%';
+                        limewaterPrecipitate.style.opacity = '1';
+                        observationText.textContent = `Observation: White precipitate is formed as the gas is bubbled into limewater.`;
+                    } else {
+                        observationText.textContent = 'Observation: No reaction.';
+                    }
+                    
+                    setTimeout(() => {
+                        clearInterval(bubbleInterval);
+                        bubblingContainer.innerHTML = '';
+                    }, 3000);
+                    
+                }, 1000);
+
+            } else { // It's a splint or litmus paper test
+                dynamicGasVisual.classList.add('hidden');
+                testTubeElement.classList.remove('hidden');
+                litmusSplintSetup.classList.remove('hidden');
+                
+                // Show or hide the splint based on the test type
+                if (testType.includes('litmus paper')) {
+                    splint.style.display = 'none';
+                } else {
+                    splint.style.display = 'block';
+                }
+                
+                let gasReaction = false;
+
+                if (gasName === 'H₂' && testType.includes('lighted splint')) {
+                    splint.classList.add('lit');
+                    
+                    setTimeout(() => {
+                        splint.classList.add('extinguish-effect');
+                        splint.classList.remove('lit');
+                        splint.classList.add('pop-effect');
+                        observationText.textContent = `Observation: Gas produced extinguishes the lighted splint with a 'pop' sound.`;
+                    }, 500);
+                    gasReaction = true;
+                } else if (gasName === 'O₂' && testType.includes('glowing splint')) {
+                    // Start glowing immediately
+                    splint.classList.add('glowing');
+                    
+                    setTimeout(() => {
+                        observationText.textContent = 'Observation: Gas produced relights the glowing splint.';
+                        
+                        setTimeout(() => {
+                            // Relight after a short pause
+                            splint.classList.remove('glowing');
+                            splint.classList.add('lit');
+                        }, 1000);
+                        
+                    }, 500);
+                    gasReaction = true;
+                } else if (gasName === 'NH₃' && testType.includes('damp red litmus paper')) {
+                    redLitmusPaper.style.opacity = '1';
+                    blueLitmusPaper.style.opacity = '0'; // Ensure only the correct paper is shown
+                    setTimeout(() => {
+                        redLitmusPaper.style.backgroundColor = 'blue';
+                        observationText.textContent = `Observation: Gas evolved turns damp red litmus paper blue.`;
+                    }, 500);
+                    gasReaction = true;
+                } else if (gasName === 'Cl₂' && testType.includes('damp litmus paper')) {
+                    redLitmusPaper.style.opacity = '1';
+                    blueLitmusPaper.style.opacity = '1';
+                    
+                    setTimeout(() => {
+                        blueLitmusPaper.style.backgroundColor = 'red';
+                        observationText.textContent = 'Gas evolved turns damp blue litmus paper to red and then bleaches it. Gas evolved can also bleaches damp red litmus paper.';
+                        
+                        setTimeout(() => {
+                             redLitmusPaper.style.backgroundColor = 'white';
+                             blueLitmusPaper.style.backgroundColor = 'white';
+                        }, 1000);
+                    }, 500);
+                    
+                    gasReaction = true;
+                }
+
+                if (!gasReaction) {
+                     observationText.textContent = 'Observation: No reaction.';
+                     showMessage('Incorrect Test', `The selected test is not the correct one for ${gasName}. Try a different test.`);
+                }
+            }
+        };
+        
+        addReagentBtn.addEventListener('click', () => {
+            const substance = substanceSelect.value;
+            const reagent = reagentSelect.value;
+            const testType = testTypeSelect.value;
+            let data = {};
+            if (testType === 'cations') {
+                data = cationData[substance];
+            } else if (testType === 'anions') {
+                data = anionData[substance];
+            }
+            const result = data[reagent];
+
+            if (!result) {
+                showMessage('Error', 'Invalid substance or reagent selected.');
+                return;
+            }
+
+            // Handle gas-producing reactions first
+            if (result.gas) {
+                let gasName = result.gas;
+                if (gasName === 'NH₃') {
+                    showMessage('Warming Required', 'To test for ammonia gas, you must first add the reagent and then warm the mixture gently. Please switch to **Gas Identification** and click **Perform Test** to simulate.');
+                } else if (gasName === 'CO₂') {
+                    showMessage('Gas Produced', 'This reaction produces **carbon dioxide gas**. Please switch to **Gas Identification** and click **Perform Test** to simulate.');
+                }
+                return;
+            }
+            
+            // Handle non-gas reactions (precipitate formation or no change)
+            if (!state.excessReagentAdded) {
+                state.excessReagentAdded = true;
+                addReagentBtn.textContent = 'Add Excess Reagent';
+
+                if (result.pptColor && result.pptColor !== 'none') {
+                    animatePrecipitate(result.pptColor);
+                    state.precipitateColorHex = getColorCode(result.pptColor);
+                    observationText.textContent = `Observation: A **${result.pptColor}** precipitate is formed.`;
+                } else {
+                    observationText.textContent = 'Observation: No visible reaction.';
+                }
+            } else {
+                // Excess reagent addition
+                if (result.soluble) {
+                    animateDissolve();
+                    if (result.excessColor) {
+                        const startColor = state.precipitateColorHex;
+                        const endColor = getColorCode(result.excessColor);
+                        setTimeout(() => animateExcess(startColor, endColor), 1000);
+                        observationText.textContent = `Observation: The precipitate dissolves to form a **${result.excessColor}** solution.`;
+                    } else {
+                        observationText.textContent = 'Observation: The precipitate dissolves to form a colorless solution.';
+                    }
+                } else {
+                    // Insoluble precipitate - no visual change, but observation is updated
+                    observationText.textContent = `Observation: The precipitate does not dissolve in excess reagent.`;
+                }
+                
+                // Reset state for the next test
+                state.excessReagentAdded = false;
+                addReagentBtn.textContent = 'Add Reagent';
+            }
+        });
+        
+        testGasBtn.addEventListener('click', () => {
+            const gas = substanceSelect.value;
+            const test = gasTestSelect.value;
+            const gasInfo = gasData[gas];
+
+            if (!gasInfo) {
+                showMessage('Error', 'Invalid gas selected.');
+                return;
+            }
+            
+            animateGas(gas, test, gasInfo.result);
+        });
+
+        testTypeSelect.addEventListener('change', () => {
+             resetSimulation();
+        });
+        
+        substanceSelect.addEventListener('change', () => {
+            updateInitialSolutionColor();
+            updateReagents();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            resetSimulation();
+        });
+
+        function resetSimulation() {
+            state.currentTest = null;
+            state.currentSubstance = null;
+            state.hasGas = false;
+            state.currentGas = null;
+            state.excessReagentAdded = false;
+            state.precipitateColorHex = null;
+
+            // Reset UI
+            testTubeElement.classList.remove('hidden');
+            testTubeLiquid.style.height = '100%';
+            updateInitialSolutionColor();
+            precipitateElement.style.height = '0';
+            precipitateElement.style.opacity = '0';
+            addReagentBtn.textContent = 'Add Reagent';
+            
+            // Gas test area cleanup
+            dynamicGasVisual.classList.add('hidden');
+            litmusSplintSetup.classList.add('hidden');
+            redLitmusPaper.style.opacity = '0';
+            blueLitmusPaper.style.opacity = '0';
+            redLitmusPaper.style.backgroundColor = '#ef4444';
+            blueLitmusPaper.style.backgroundColor = '#3b82f6';
+            splint.classList.remove('pop-effect', 'glowing', 'extinguish-effect', 'lit');
+            splint.style.backgroundColor = '#94a3b8';
+            limewaterLiquid.classList.remove('cloudy-effect'); // Remove the blur class
+            limewaterLiquid.style.backgroundColor = getColorCode('limewater');
+            limewaterPrecipitate.style.height = '0';
+            limewaterPrecipitate.style.opacity = '0';
+            bubblingContainer.innerHTML = '';
+            splint.style.display = 'block'; // Reset splint visibility
+            
+            updateSubstances();
+        }
+
+        updateSubstances();
+
+    </script>
+</body>
+</html>
